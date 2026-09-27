@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>אדם & איילה - Ultimate Arena Control</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background: #010104;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #stage-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #strobe-flash {
+            position: fixed;
+            inset: 0;
+            background: #fff;
+            z-index: 80;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.04s ease;
+        }
+
+        /* מסך צילום והקרנת סרטון מאחורי הקלעים */
+        #backstage-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 600;
+            background: rgba(0, 0, 0, 0.92);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #backstage-video {
+            width: 70vw;
+            height: 60vh;
+            border-radius: 20px;
+            border: 4px solid #00f0ff;
+            box-shadow: 0 0 50px rgba(0, 240, 255, 0.6);
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #backstage-video.playback-mode {
+            transform: none;
+            border-color: #ffaa00;
+            box-shadow: 0 0 50px rgba(255, 170, 0, 0.7);
+        }
+
+        .backstage-badge {
+            margin-top: 15px;
+            font-size: 26px;
+            font-weight: 900;
+            color: #ffaa00;
+            text-shadow: 0 0 20px #ffaa00;
+            letter-spacing: 2px;
+        }
+
+        /* מסך ספירה לאחור ומסך דרמה */
+        #countdown-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 700;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+        }
+
+        .drama-banner {
+            font-size: 85px;
+            font-weight: 950;
+            color: #00ff66;
+            text-shadow: 0 0 40px #00ff66, 0 0 90px #00bb33;
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 0 40px;
+            line-height: 1.2;
+            animation: popDrama 0.8s ease-out;
+        }
+
+        .countdown-num {
+            font-size: 300px;
+            font-weight: 950;
+            color: #00f0ff;
+            text-shadow: 0 0 70px #00f0ff, 0 0 140px #ff0077;
+            animation: pop 0.9s ease-out;
+        }
+
+        @keyframes pop {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        @keyframes popDrama {
+            0% {
+                transform: scale(0.6);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* מסך נעילת BAN מוחלטת */
+        #ban-lock-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 850;
+            background: rgba(160, 0, 15, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 30px;
+            animation: flashRed 1s infinite alternate;
+        }
+
+        @keyframes flashRed {
+            from {
+                background: rgba(140, 0, 10, 0.96);
+            }
+
+            to {
+                background: rgba(50, 0, 5, 0.98);
+            }
+        }
+
+        .ban-huge-text {
+            font-size: 75px;
+            font-weight: 950;
+            color: #fff;
+            text-shadow: 0 0 40px #ff0000;
+            margin-bottom: 20px;
+        }
+
+        .ban-sub-text {
+            font-size: 34px;
+            color: #ffcc00;
+            font-weight: 800;
+            margin-bottom: 40px;
+            max-width: 85%;
+            line-height: 1.3;
+        }
+
+        /* מסך עצירת מופע זמנית */
+        #stop-lock-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 860;
+            background: rgba(180, 110, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 30px;
+            animation: flashAmber 1s infinite alternate;
+        }
+
+        @keyframes flashAmber {
+            from {
+                background: rgba(170, 90, 0, 0.96);
+            }
+
+            to {
+                background: rgba(60, 30, 0, 0.98);
+            }
+        }
+
+        .stop-huge-text {
+            font-size: 80px;
+            font-weight: 950;
+            color: #fff;
+            text-shadow: 0 0 40px #ffaa00;
+            margin-bottom: 20px;
+        }
+
+        /* מסך מתקפת HACKER */
+        #hacker-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            background: rgba(0, 5, 2, 0.96);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: #00ff66;
+            font-family: monospace;
+            padding: 30px;
+        }
+
+        .hacker-glitch-title {
+            font-size: 70px;
+            font-weight: 950;
+            text-shadow: 0 0 25px #00ff66, 0 0 50px #ff0055;
+            animation: glitchAnim 0.25s infinite alternate;
+            margin-bottom: 15px;
+        }
+
+        @keyframes glitchAnim {
+            0% {
+                transform: translate(3px, -2px);
+            }
+
+            50% {
+                transform: translate(-4px, 3px);
+            }
+
+            100% {
+                transform: translate(2px, -3px);
+            }
+        }
+
+        /* סרגל עליון */
+        .top-status-bar {
+            position: fixed;
+            top: 15px;
+            left: 25px;
+            right: 25px;
+            z-index: 120;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .badge {
+            background: rgba(8, 10, 24, 0.88);
+            border: 1px solid rgba(0, 240, 255, 0.35);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: #ff0044;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff0044;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                opacity: 0.4;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* שלט מרכזי */
+        .hero-center {
+            position: absolute;
+            top: 18%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+            transition: all 0.5s ease;
+        }
+
+        .hero-title {
+            font-size: 135px;
+            font-weight: 950;
+            line-height: 1;
+            letter-spacing: 6px;
+            text-shadow: 0 0 45px #00f0ff, 0 0 90px #ff0077, 0 0 150px rgba(0, 240, 255, 0.7);
+            background: linear-gradient(180deg, #ffffff 15%, #00f0ff 60%, #ff0077 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-sub {
+            font-size: 26px;
+            letter-spacing: 5px;
+            margin-top: 10px;
+            font-weight: 800;
+            text-shadow: 0 3px 15px rgba(0, 0, 0, 0.9);
+        }
+
+        .guest-shoutout {
+            display: none;
+            font-size: 55px;
+            font-weight: 900;
+            color: #ffe600;
+            text-shadow: 0 0 30px #ffaa00;
+            margin-top: 12px;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* כרטיסיית שיר */
+        .song-card {
+            position: fixed;
+            bottom: 120px;
+            right: 25px;
+            z-index: 100;
+            background: rgba(8, 10, 26, 0.92);
+            border-right: 5px solid #00f0ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.9);
+            transition: opacity 0.3s;
+        }
+
+        .song-title-display {
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .song-credits-display {
+            font-size: 13px;
+            color: #00f0ff;
+            margin-top: 3px;
+            font-weight: bold;
+        }
+
+        /* פאנל ניהול אחד אחוד וקומפקטי */
+        .panel-dock {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            align-items: center;
+            background: rgba(6, 8, 18, 0.96);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            padding: 7px 14px;
+            border-radius: 25px;
+            box-shadow: 0 0 35px rgba(0, 240, 255, 0.35);
+            backdrop-filter: blur(14px);
+            max-width: 98vw;
+            transition: opacity 0.3s ease;
+        }
+
+        .t-btn {
+            background: #14172a;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 6px 11px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .t-btn:hover {
+            background: #00f0ff;
+            color: #000;
+            transform: translateY(-1px);
+        }
+
+        .t-btn.active {
+            background: #ff0055 !important;
+            border-color: #ff0055 !important;
+            color: #fff !important;
+        }
+
+        .t-btn.drop {
+            background: linear-gradient(45deg, #ff0055, #ffaa00);
+            color: #fff;
+            border: none;
+        }
+
+        .t-btn.soon {
+            border-color: #00f0ff;
+            color: #00f0ff;
+            font-weight: 900;
+        }
+
+        .t-btn.backstage {
+            border-color: #ffaa00;
+            color: #ffaa00;
+            font-weight: 900;
+        }
+
+        .t-btn.snake {
+            border-color: #00ff66;
+            color: #00ff66;
+            font-weight: 900;
+        }
+
+        .t-btn.return-duo {
+            background: linear-gradient(45deg, #00f0ff, #ff00aa);
+            color: #fff;
+            border: none;
+            font-weight: 900;
+        }
+
+        .t-btn.ban-btn {
+            background: #ff0033;
+            color: #fff;
+            border: 1px solid #ff3366;
+            font-weight: 900;
+        }
+
+        .t-btn.hacker-btn {
+            background: #003311;
+            color: #00ff66;
+            border: 1px solid #00ff66;
+            font-weight: 900;
+            font-family: monospace;
+        }
+
+        .t-btn.stop-show-btn {
+            background: #ffaa00;
+            color: #000;
+            border: 1px solid #ffcc00;
+            font-weight: 900;
+        }
+
+        .t-btn.remove-guest {
+            background: #331522;
+            color: #ff6699;
+            border: 1px solid #ff6699;
+            font-weight: 900;
+        }
+
+        body.clean-hud .panel-dock,
+        body.clean-hud .top-status-bar,
+        body.clean-hud .song-card {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* מודאל */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-card {
+            background: #0f1122;
+            border: 2px solid #00f0ff;
+            padding: 25px;
+            border-radius: 16px;
+            width: 440px;
+            text-align: center;
+        }
+
+        .modal-card input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #050610;
+            color: #fff;
+            text-align: center;
+            margin: 15px 0;
+            outline: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="stage-canvas"></canvas>
+    <div id="strobe-flash"></div>
+
+    <!-- מסך וידאו מאחורי הקלעים -->
+    <div id="backstage-screen">
+        <video id="backstage-video" autoplay playsinline></video>
+        <div class="backstage-badge" id="backstage-badge-txt">🔴 צילום סרטון כניסה לבמה...</div>
+        <div style="margin-top:15px; display:flex; gap:10px;" id="backstage-controls">
+            <button class="t-btn" id="btn-rec-action"
+                style="background:#ff0044; color:#fff; font-size:15px; padding:10px 20px; border-radius:30px;">● התחל
+                הקלטת וידאו</button>
+            <button class="t-btn" id="btn-cancel-cam"
+                style="font-size:15px; padding:10px 20px; border-radius:30px;">ביטול</button>
+        </div>
+    </div>
+
+    <!-- מסך ספירה לאחור ודרמה -->
+    <div id="countdown-overlay">
+        <div class="drama-banner" id="drama-txt" style="display:none;"></div>
+        <div class="countdown-num" id="countdown-val">10</div>
+    </div>
+
+    <!-- מסך נעילת BAN מוחלטת -->
+    <div id="ban-lock-screen">
+        <div class="ban-huge-text" id="ban-lock-title">🚨 התראת אבטחה חמורה! 🚨</div>
+        <div class="ban-sub-text" id="ban-lock-desc">הפושע זוהה מנסה לפרוץ לבמה. האבטחה פועלת לפינויו כעת!</div>
+        <button class="t-btn" id="btn-resume-after-ban"
+            style="background:#00ff66; color:#000; font-size:22px; padding:15px 35px; border-radius:40px; font-weight:950; cursor:pointer;">
+            ✅ האבטחה פינתה אותו - המשך מופע!
+        </button>
+    </div>
+
+    <!-- מסך עצירת מופע זמנית בגלל בלאגן -->
+    <div id="stop-lock-screen">
+        <div class="stop-huge-text">🛑 עצירת מופע זמנית! 🛑</div>
+        <div class="ban-sub-text">
+            בגלל אנשים רבים שמנסים לטפס ולפרוץ לבמה – המופע נעצר זמנית!<br>
+            האבטחה מפנה את כולם חזרה למקומותיהם.
+        </div>
+        <button class="t-btn" id="btn-resume-after-stop"
+            style="background:#00f0ff; color:#000; font-size:22px; padding:15px 35px; border-radius:40px; font-weight:950; cursor:pointer;">
+            ✅ כולם חזרו למקומות - המשך מופע!
+        </button>
+    </div>
+
+    <!-- מסך מתקפת HACKER פריצה משודרג -->
+    <div id="hacker-overlay">
+        <div class="hacker-glitch-title">💀 SYSTEM OVERRIDE: HACKED! 💀</div>
+        <div style="font-size:26px; color:#fff; margin-bottom:20px;" id="hacker-msg">ההאקר השתלט על מערכות האצטדיון!
+        </div>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:850px;">
+            <button class="t-btn" id="hacker-opt-kidnap"
+                style="background:#ff0033; font-size:15px; padding:10px 18px;">🏴‍☠️ חטיפת אדם ואיילה!</button>
+            <button class="t-btn" id="hacker-opt-video"
+                style="background:#5500aa; font-size:15px; padding:10px 18px;">🎬 סרטון דרמטי של ההאקר</button>
+            <button class="t-btn" id="hacker-opt-glitch"
+                style="background:#008855; font-size:15px; padding:10px 18px;">🌪️ שיבוש מסכים וגליץ'</button>
+            <button class="t-btn" id="hacker-opt-megaphone"
+                style="background:#ff5500; font-size:15px; padding:10px 18px;">📢 השתלטות על הרמקולים</button>
+            <button class="t-btn" id="hacker-opt-fire-crazy"
+                style="background:#cc0000; font-size:15px; padding:10px 18px;">💥 פיצוץ להבות בלתי נשלט</button>
+            <button class="t-btn" id="hacker-opt-blackout"
+                style="background:#222; font-size:15px; padding:10px 18px; border-color:#888;">⚡ השבתת חשמל
+                לבמה</button>
+            <button class="t-btn" id="hacker-opt-cure"
+                style="background:#00ff66; color:#000; font-size:16px; padding:12px 25px; font-weight:950; margin-top:10px;">🛡️
+                שחרר מערכת והצל את המופע!</button>
+        </div>
+    </div>
+
+    <div class="top-status-bar">
+        <div class="badge">
+            <span class="live-dot"></span>
+            <span>אצטדיון ענק (LIVE)</span>
+            <span style="color:#00f0ff;" id="v-count">● 112,000 צופים</span>
+        </div>
+        <div class="badge" style="border-color:#ffaa00;">
+            <span>קונטרול: <b style="color:#ffea00;">אדם</b> 🎧 | מקש <b>H</b> להסתרת פאנל</span>
+        </div>
+    </div>
+
+    <div class="hero-center">
+        <div class="hero-title" id="band-title">אדם & איילה</div>
+        <div class="hero-sub" id="tour-subtitle">הסיבוב העולמי הגדול • ARENA STAGE</div>
+        <div class="guest-shoutout" id="guest-box">⭐ על הבמה עכשיו: <span id="guest-target"></span>! ⭐</div>
+    </div>
+
+    <div class="song-card">
+        <div class="song-title-display" id="s-title">מתחילים את הבלאגן</div>
+        <div class="song-credits-display" id="s-credits">ביצוע: אדם & איילה • סאונד ותאורה: אדם</div>
+    </div>
+
+    <!-- פאנל ניהול שלם עם כל הכפתורים -->
+    <div class="panel-dock" id="panel-dock">
+        <button class="t-btn soon" id="btn-starting-soon">⏳ עוד מעט מתחילים</button>
+        <button class="t-btn backstage" id="btn-backstage-trigger">🎬 סרטון מאחורי הקלעים</button>
+        <button class="t-btn snake" id="btn-pause">🐍 מופע נחשית ואדם</button>
+        <button class="t-btn return-duo" id="btn-return-duo">⭐ חזרת אדם ואיילה!</button>
+
+        <button class="t-btn" id="btn-jump" style="color:#00f0ff;">🙌 כולם לקפוץ!</button>
+        <button class="t-btn" id="btn-lights" style="color:#ffff00;">📱 תדליקו פנסים!</button>
+        <button class="t-btn" id="btn-cheer-ayala" style="color:#ff77ff;">🔥 כפיים לאיילה!</button>
+        <button class="t-btn" id="btn-solo-adam" style="color:#00ffcc;">🎸 סולו אדם!</button>
+
+        <!-- כפתורי אבטחה, באן והאקר -->
+        <button class="t-btn ban-btn" id="btn-ban-criminal">🚨 BAN לפושע!</button>
+        <button class="t-btn hacker-btn" id="btn-hacker-trigger">💻 HACKER</button>
+        <button class="t-btn stop-show-btn" id="btn-stop-show">🛑 עצירת מופע זמנית</button>
+
+        <button class="t-btn drop" id="btn-master-drop">🚀 שיא (DROP)</button>
+        <button class="t-btn" id="btn-conf">🎉 קונפטי</button>
+        <button class="t-btn" id="btn-fireworks">🎆 זיקוקים</button>
+        <button class="t-btn" id="btn-fire">🔥 להבות</button>
+        <button class="t-btn" id="btn-lasers">⚡ לייזרים</button>
+        <button class="t-btn" id="btn-blinder">💡 פלאש</button>
+        <button class="t-btn" id="btn-beat">🔊 ביט EDM</button>
+        <button class="t-btn" id="btn-cheer">👏 קהל</button>
+        <button class="t-btn" id="btn-horn">📢 איר-הורן</button>
+        <button class="t-btn" id="btn-track">🎵 שיר הבא</button>
+        <button class="t-btn" id="btn-stage-guest" style="color:#ffaa00;">🎤 העלה לבמה</button>
+        <!-- כפתור הורדה מהבמה החדש -->
+        <button class="t-btn remove-guest" id="btn-remove-guest">👋 הורד מהבמה</button>
+        <button class="t-btn" id="btn-fs">⛶ מסך מלא</button>
+    </div>
+
+    <div class="modal-backdrop" id="modal">
+        <div class="modal-card">
+            <h2 id="m-heading" style="color:#00f0ff;">הזן נתונים</h2>
+            <input type="text" id="m-input" placeholder="הקלד כאן...">
+            <div style="display:flex; justify-content:center; gap:8px;">
+                <button class="t-btn" id="m-ok" style="background:#00f0ff; color:#000;">אישור</button>
+                <button class="t-btn" id="m-cancel">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('stage-canvas');
+        const ctx = canvas.getContext('2d');
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let isBreak = false;
+        let isLaser = false;
+        let isFlashlightsMode = false;
+        let isBlackout = false;
+        let isHackerGlitch = false;
+        let particles = [];
+        let fireJets = [];
+        let lightAngle = 0;
+
+        const crowd = [];
+        for (let i = 0; i < 90; i++) {
+            crowd.push({ x: (i / 90) * window.innerWidth, offset: Math.random() * Math.PI * 2, h: 45 + Math.random() * 35 });
+        }
+
+        function addConfetti() {
+            for (let i = 0; i < 160; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width, y: -20,
+                    vx: (Math.random() - 0.5) * 7, vy: Math.random() * 5 + 4,
+                    size: Math.random() * 8 + 4, color: `hsl(${Math.random() * 360}, 100%, 60%)`, life: 220
+                });
+            }
+        }
+
+        function addFireworks() {
+            for (let f = 0; f < 3; f++) {
+                const tx = canvas.width * 0.2 + Math.random() * (canvas.width * 0.6);
+                const ty = canvas.height * 0.15 + Math.random() * (canvas.height * 0.3);
+                const base = isBreak ? 130 : Math.floor(Math.random() * 360);
+                for (let i = 0; i < 55; i++) {
+                    const a = Math.random() * Math.PI * 2;
+                    const s = Math.random() * 8 + 2;
+                    particles.push({
+                        x: tx, y: ty, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+                        size: Math.random() * 4 + 2, color: `hsl(${base + (Math.random() * 30 - 15)}, 100%, 65%)`, life: 80
+                    });
+                }
+            }
+        }
+
+        function triggerFire() {
+            for (let j = 0; j < 35; j++) {
+                fireJets.push({
+                    x: canvas.width * 0.2 + (Math.random() - 0.5) * 40, y: canvas.height * 0.82,
+                    vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 12 - 8, r: 16, life: 40
+                });
+                fireJets.push({
+                    x: canvas.width * 0.8 + (Math.random() - 0.5) * 40, y: canvas.height * 0.82,
+                    vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 12 - 8, r: 16, life: 40
+                });
+            }
+        }
+
+        function triggerBlinder() {
+            const flash = document.getElementById('strobe-flash');
+            flash.style.opacity = '0.9';
+            setTimeout(() => { flash.style.opacity = '0'; }, 70);
+        }
+
+        function robotAnnounce(text) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(880, now);
+            osc.frequency.setValueAtTime(1760, now + 0.08);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.2);
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'he-IL';
+                utter.pitch = 0.35;
+                utter.rate = 0.85;
+                setTimeout(() => { window.speechSynthesis.speak(utter); }, 200);
+            }
+        }
+
+        function showBannerMessage(text, color, timeMs) {
+            const overlay = document.getElementById('countdown-overlay');
+            const drama = document.getElementById('drama-txt');
+            const val = document.getElementById('countdown-val');
+            val.style.display = 'none';
+            drama.style.display = 'block';
+            drama.innerText = text;
+            drama.style.color = color || '#00ff66';
+            overlay.style.display = 'flex';
+
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                drama.style.display = 'none';
+                val.style.display = 'block';
+            }, timeMs || 3500);
+        }
+
+        document.getElementById('btn-master-drop').addEventListener('click', () => {
+            triggerBlinder();
+            triggerFire();
+            addFireworks();
+            addConfetti();
+            playSub();
+            robotAnnounce("זהו רגע השיא של המופע באצטדיון!");
+        });
+
+        function loop() {
+            if (isBlackout) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(loop);
+                return;
+            }
+
+            if (isHackerGlitch) {
+                ctx.fillStyle = (Math.random() > 0.5) ? 'rgba(0, 40, 15, 0.7)' : 'rgba(25, 0, 10, 0.8)';
+            } else if (isFlashlightsMode) {
+                ctx.fillStyle = 'rgba(0, 2, 8, 0.65)';
+            } else {
+                ctx.fillStyle = isBreak ? 'rgba(2, 18, 8, 0.45)' : 'rgba(2, 3, 14, 0.45)';
+            }
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            lightAngle += 0.04;
+
+            if (!isFlashlightsMode) {
+                for (let i = 0; i < 6; i++) {
+                    const ox = (canvas.width / 7) * (i + 1);
+                    const sweep = Math.sin(lightAngle + i) * (canvas.width * 0.35);
+                    const g = ctx.createLinearGradient(ox, canvas.height * 0.8, ox + sweep, 0);
+
+                    if (isHackerGlitch) {
+                        g.addColorStop(0, 'rgba(0, 255, 100, 0.6)');
+                    } else if (isBreak) {
+                        g.addColorStop(0, 'rgba(0, 255, 100, 0.45)');
+                    } else {
+                        g.addColorStop(0, i % 2 === 0 ? 'rgba(0, 240, 255, 0.4)' : 'rgba(255, 0, 120, 0.4)');
+                    }
+                    g.addColorStop(1, 'rgba(0,0,0,0)');
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(ox - 30, canvas.height * 0.8);
+                    ctx.lineTo(ox + sweep + 70, 0);
+                    ctx.lineTo(ox + sweep - 70, 0);
+                    ctx.lineTo(ox + 30, canvas.height * 0.8);
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            if (isHackerGlitch) {
+                ctx.fillStyle = '#00ff66';
+                ctx.font = '16px monospace';
+                for (let k = 0; k < 8; k++) {
+                    ctx.fillText(`ERR_OVERRIDE_0x${Math.floor(Math.random() * 99999).toString(16)} // HACKER_ACTIVE`, Math.random() * canvas.width, Math.random() * canvas.height);
+                }
+            }
+
+            for (let i = fireJets.length - 1; i >= 0; i--) {
+                const f = fireJets[i];
+                f.x += f.vx; f.y += f.vy; f.r += 1.5; f.life--;
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, ${f.life * 5}, 0, ${f.life / 40})`;
+                ctx.fill();
+                if (f.life <= 0) fireJets.splice(i, 1);
+            }
+
+            if (isLaser && !isFlashlightsMode) {
+                for (let l = 0; l < 8; l++) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = isHackerGlitch ? '#00ff44' : (isBreak ? '#00ff66' : (l % 2 === 0 ? '#00f0ff' : '#ff0055'));
+                    ctx.lineWidth = 3;
+                    ctx.moveTo(canvas.width * 0.5, canvas.height * 0.8);
+                    ctx.lineTo(canvas.width * (0.1 + Math.sin(lightAngle * 2 + l) * 0.4 + 0.4), canvas.height * (0.05 + Math.cos(lightAngle * 1.5 + l) * 0.25));
+                    ctx.stroke();
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life--;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            ctx.fillStyle = '#010105';
+            const t = Date.now() * 0.005;
+            for (let c of crowd) {
+                const bounce = Math.sin(t + c.offset) * 14;
+                const curY = canvas.height - c.h + bounce;
+                ctx.beginPath();
+                ctx.arc(c.x, curY, 20, 0, Math.PI * 2);
+                ctx.rect(c.x - 18, curY, 36, canvas.height - curY);
+                ctx.fill();
+
+                if (isFlashlightsMode) {
+                    ctx.beginPath();
+                    ctx.arc(c.x + 8, curY - 14, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = '#00f0ff';
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        let audioCtx = null;
+        let edmTimer = null;
+        let isEDM = false;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playDramaticTick(secondNum) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            const freq = 120 + (10 - secondNum) * 35;
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.5);
+        }
+
+        function playHorn() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            [440, 440, 440, 520].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now + i * 0.12);
+                gain.gain.setValueAtTime(0.3, now + i * 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.12 + 0.18);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + i * 0.12);
+                osc.stop(now + i * 0.12 + 0.2);
+            });
+            triggerBlinder();
+        }
+
+        function playSub() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.exponentialRampToValueAtTime(25, now + 1.2);
+            gain.gain.setValueAtTime(0.7, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 1.3);
+        }
+
+        const bassNotes = [55, 55, 65, 49];
+        function toggleEDM() {
+            initAudio();
+            const bBtn = document.getElementById('btn-beat');
+            if (!isEDM) {
+                isEDM = true;
+                bBtn.classList.add('active');
+                bBtn.innerText = "🔇 כבה ביט";
+                let step = 0;
+                edmTimer = setInterval(() => {
+                    const now = audioCtx.currentTime;
+                    const kickOsc = audioCtx.createOscillator();
+                    const kickGain = audioCtx.createGain();
+                    kickOsc.connect(kickGain);
+                    kickGain.connect(audioCtx.destination);
+                    kickOsc.frequency.setValueAtTime(140, now);
+                    kickOsc.frequency.exponentialRampToValueAtTime(32, now + 0.14);
+                    kickGain.gain.setValueAtTime(0.5, now);
+                    kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+                    kickOsc.start(now);
+                    kickOsc.stop(now + 0.15);
+
+                    const bassOsc = audioCtx.createOscillator();
+                    const bassGain = audioCtx.createGain();
+                    bassOsc.type = 'sawtooth';
+                    bassOsc.frequency.setValueAtTime(bassNotes[step % 4], now);
+                    bassOsc.connect(bassGain);
+                    bassGain.connect(audioCtx.destination);
+                    bassGain.gain.setValueAtTime(0.12, now);
+                    bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+                    bassOsc.start(now);
+                    bassOsc.stop(now + 0.25);
+                    step++;
+                }, 320);
+            } else {
+                isEDM = false;
+                clearInterval(edmTimer);
+                bBtn.classList.remove('active');
+                bBtn.innerText = "🔊 ביט EDM";
+            }
+        }
+
+        function playCrowdCheer() {
+            initAudio();
+            const bufferSize = audioCtx.sampleRate * 2.5;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 850;
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.5);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 2.5);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start();
+            addConfetti();
+        }
+
+        // --- מערכת וידאו מאחורי הקלעים ---
+        let liveCamStream = null;
+        let videoRecorder = null;
+        let recordedVideoChunks = [];
+        const backstageScreen = document.getElementById('backstage-screen');
+        const backstageVideo = document.getElementById('backstage-video');
+        const btnBackstageTrigger = document.getElementById('btn-backstage-trigger');
+        const btnRecAction = document.getElementById('btn-rec-action');
+        const btnCancelCam = document.getElementById('btn-cancel-cam');
+        const backstageBadgeTxt = document.getElementById('backstage-badge-txt');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        const countdownVal = document.getElementById('countdown-val');
+        const dramaTxt = document.getElementById('drama-txt');
+
+        btnBackstageTrigger.addEventListener('click', async () => {
+            try {
+                liveCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                backstageVideo.srcObject = liveCamStream;
+                backstageVideo.classList.remove('playback-mode');
+                backstageVideo.muted = true;
+                backstageVideo.play();
+                backstageScreen.style.display = 'flex';
+                backstageBadgeTxt.innerText = "🔴 צילום סרטון כניסה לבמה...";
+                btnRecAction.innerText = "● התחל הקלטת וידאו";
+                btnRecAction.style.background = "#ff0044";
+            } catch (err) { alert("נא לאשר גישה למצלמה ולמיקרופון!"); }
+        });
+
+        btnRecAction.addEventListener('click', () => {
+            if (!videoRecorder || videoRecorder.state === 'inactive') {
+                recordedVideoChunks = [];
+                videoRecorder = new MediaRecorder(liveCamStream);
+                videoRecorder.ondataavailable = e => { if (e.data.size > 0) recordedVideoChunks.push(e.data); };
+
+                videoRecorder.onstop = () => {
+                    if (liveCamStream) {
+                        liveCamStream.getTracks().forEach(t => t.stop());
+                        liveCamStream = null;
+                    }
+
+                    const videoBlob = new Blob(recordedVideoChunks, { type: 'video/webm' });
+                    const videoUrl = URL.createObjectURL(videoBlob);
+                    backstageVideo.srcObject = null;
+                    backstageVideo.src = videoUrl;
+                    backstageVideo.muted = false;
+                    backstageVideo.classList.add('playback-mode');
+                    backstageBadgeTxt.innerText = "📺 משדר עכשיו לאצטדיון: סרטון מאחורי הקלעים!";
+                    btnRecAction.style.display = 'none';
+                    btnCancelCam.style.display = 'none';
+                    backstageVideo.play();
+
+                    backstageVideo.onended = () => { startStageCountdown(); };
+                };
+
+                videoRecorder.start();
+                btnRecAction.innerText = "⏹️ סיום הקלטה ושדר לאצטדיון!";
+                btnRecAction.style.background = "#00ff66";
+                btnRecAction.style.color = "#000";
+                backstageBadgeTxt.innerText = "🔴 מקליט אתכם עכשיו...";
+            } else if (videoRecorder.state === 'recording') {
+                videoRecorder.stop();
+            }
+        });
+
+        btnCancelCam.addEventListener('click', () => {
+            if (liveCamStream) {
+                liveCamStream.getTracks().forEach(t => t.stop());
+                liveCamStream = null;
+            }
+            backstageScreen.style.display = 'none';
+        });
+
+        function startStageCountdown() {
+            backstageScreen.style.display = 'none';
+            btnRecAction.style.display = 'inline-block';
+            btnCancelCam.style.display = 'inline-block';
+
+            dramaTxt.style.display = 'none';
+            countdownOverlay.style.display = 'flex';
+            let count = 10;
+            countdownVal.innerText = count;
+            playDramaticTick(count);
+
+            const countInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownVal.innerText = count;
+                    countdownVal.style.animation = 'none';
+                    countdownVal.offsetHeight;
+                    countdownVal.style.animation = 'pop 0.9s ease-out';
+                    playDramaticTick(count);
+                } else {
+                    clearInterval(countInterval);
+                    countdownOverlay.style.display = 'none';
+                    triggerBlinder();
+                    triggerFire();
+                    addFireworks();
+                    addConfetti();
+                    playSub();
+                    playCrowdCheer();
+                    robotAnnounce("קבלו באהבה על הבמה את אדם ואיילה!");
+                }
+            }, 1000);
+        }
+
+        // כפתור עוד מעט מתחילים
+        document.getElementById('btn-starting-soon').addEventListener('click', () => {
+            showBannerMessage("✨ נא לתפוס מקומות... ✨\nהמופע הגדול מתחיל בעוד מספר רגעים!", "#00f0ff", 5000);
+            robotAnnounce("נא לתפוס מקומות, המופע מתחיל בעוד מספר רגעים!");
+            triggerBlinder();
+        });
+
+        // 4 כפתורי הפעלת קהל
+        document.getElementById('btn-jump').addEventListener('click', () => {
+            showBannerMessage("🙌 כולם לקפוץ עכשיו באוויר! 🙌", "#00f0ff", 3500);
+            robotAnnounce("כולם לקפוץ עכשיו באוויר!");
+            addConfetti();
+            if (!isEDM) toggleEDM();
+        });
+
+        document.getElementById('btn-lights').addEventListener('click', () => {
+            isFlashlightsMode = !isFlashlightsMode;
+            if (isFlashlightsMode) {
+                showBannerMessage("📱 להדליק פנסים בכל האצטדיון! ✨", "#ffff00", 3500);
+                robotAnnounce("להדליק פנסים בכל האצטדיון!");
+            }
+        });
+
+        document.getElementById('btn-cheer-ayala').addEventListener('click', () => {
+            showBannerMessage("🔥 תנו כבוד והמון כפיים לסולנית איילה! 🎤", "#ff77ff", 3500);
+            robotAnnounce("תנו המון כפיים לסולנית הראשית איילה!");
+            playCrowdCheer();
+            addFireworks();
+        });
+
+        document.getElementById('btn-solo-adam').addEventListener('click', () => {
+            showBannerMessage("🎸 ועכשיו: סולו מטורף של אדם על הבמה! ⚡", "#00ffcc", 3500);
+            robotAnnounce("ועכשיו, סולו מטורף של אדם על הבמה!");
+            triggerBlinder();
+            playHorn();
+            addConfetti();
+        });
+
+        // --- כפתור הורדה מהבמה ---
+        const guestBox = document.getElementById('guest-box');
+        const guestTarget = document.getElementById('guest-target');
+
+        document.getElementById('btn-remove-guest').addEventListener('click', () => {
+            const prevGuest = guestTarget.innerText || "האורח";
+            guestBox.style.display = "none";
+            guestTarget.innerText = "";
+            showBannerMessage(`👏 תודה רבה ל-${prevGuest} שהיה איתנו על הבמה! 👏`, "#ff6699", 3500);
+            robotAnnounce(`תודה רבה ל-${prevGuest} על ביצוע מדהים! ממשיכים במופע עם אדם ואיילה!`);
+            playCrowdCheer();
+            addConfetti();
+        });
+
+        // עצירת מופע זמנית
+        const stopLockScreen = document.getElementById('stop-lock-screen');
+        const btnResumeAfterStop = document.getElementById('btn-resume-after-stop');
+
+        document.getElementById('btn-stop-show').addEventListener('click', () => {
+            stopLockScreen.style.display = 'flex';
+            robotAnnounce("עצירת מופע זמנית. נא להתרחק מהבמה. המופע יימשך מיד לאחר החזרת הסדר על ידי האבטחה.");
+            playHorn();
+        });
+
+        btnResumeAfterStop.addEventListener('click', () => {
+            stopLockScreen.style.display = 'none';
+            robotAnnounce("הסדר הוחזר באצטדיון. ממשיכים את המופע!");
+            triggerBlinder();
+            addFireworks();
+            addConfetti();
+            playCrowdCheer();
+        });
+
+        // מערכת BAN
+        const banLockScreen = document.getElementById('ban-lock-screen');
+        const banLockTitle = document.getElementById('ban-lock-title');
+        const banLockDesc = document.getElementById('ban-lock-desc');
+        const btnResumeAfterBan = document.getElementById('btn-resume-after-ban');
+
+        btnResumeAfterBan.addEventListener('click', () => {
+            banLockScreen.style.display = 'none';
+            robotAnnounce("הפושע פונה בהצלחה. המופע חוזר כעת!");
+            triggerBlinder();
+            addFireworks();
+            addConfetti();
+            playCrowdCheer();
+        });
+
+        // --- מערכת HACKER משודרגת ---
+        const hackerOverlay = document.getElementById('hacker-overlay');
+        const hackerMsg = document.getElementById('hacker-msg');
+        document.getElementById('btn-hacker-trigger').addEventListener('click', () => {
+            hackerOverlay.style.display = 'flex';
+            hackerMsg.innerText = "ההאקר פרץ למחשב הראשי! בחר מתקפת סייבר:";
+            robotAnnounce("אזהרה! פריצת האקר למערכת הבמה!");
+            playHorn();
+        });
+
+        document.getElementById('hacker-opt-kidnap').addEventListener('click', () => {
+            hackerMsg.innerText = "💀 אדם ואיילה נחטפו מהבמה! המערכת תחת שליטת ההאקר!";
+            robotAnnounce("קוד אדום! אדם ואיילה נחטפו מהבמה על ידי ההאקר!");
+            isBlackout = true;
+            playHorn();
+        });
+
+        document.getElementById('hacker-opt-video').addEventListener('click', () => {
+            hackerMsg.innerText = "📺 משדר סרטון דרמטי של ההאקר: 'אף אחד לא יעצור אותי!'";
+            robotAnnounce("שידור סרטון דרמטי של ההאקר על כל המסכים באצטדיון!");
+            triggerBlinder();
+            playSub();
+        });
+
+        document.getElementById('hacker-opt-glitch').addEventListener('click', () => {
+            isHackerGlitch = !isHackerGlitch;
+            hackerMsg.innerText = isHackerGlitch ? "🌪️ כל המסכים והאורות משובשים על ידי וירוס מחשבים!" : "הגליץ' נוטרל.";
+            robotAnnounce(isHackerGlitch ? "וירוס סייבר משבש את כל המסכים באצטדיון!" : "שיבוש המסכים הופסק.");
+            playHorn();
+        });
+
+        document.getElementById('hacker-opt-megaphone').addEventListener('click', () => {
+            hackerMsg.innerText = "📢 ההאקר משדר ברמקולים: 'האצטדיון בשליטתי המלאה!'";
+            robotAnnounce("הודעה מההאקר: כל מערכות הסאונד שייכות לי עכשיו! נא לא לנסות לעצור אותי!");
+            triggerBlinder();
+        });
+
+        document.getElementById('hacker-opt-fire-crazy').addEventListener('click', () => {
+            hackerMsg.innerText = "💥 תותחי האש והלהבות הופעלו במצב תקלה בלתי נשלטת!";
+            robotAnnounce("אזהרה! מערכת הלהבות והזיקוקים נפרצה ומתפרצת ללא שליטה!");
+            triggerFire();
+            addFireworks();
+            triggerBlinder();
+        });
+
+        document.getElementById('hacker-opt-blackout').addEventListener('click', () => {
+            isBlackout = true;
+            hackerMsg.innerText = "⚡ כל מערכות החשמל, האורות והסאונד הושבתו לחלוטין!";
+            robotAnnounce("החשמל באצטדיון הושבת לחלוטין!");
+        });
+
+        document.getElementById('hacker-opt-cure').addEventListener('click', () => {
+            isBlackout = false;
+            isHackerGlitch = false;
+            hackerOverlay.style.display = 'none';
+            robotAnnounce("המערכת נוקתה לחלוטין. אדם הציל את המופע וההאקר גורש!");
+            triggerBlinder();
+            triggerFire();
+            addFireworks();
+            addConfetti();
+            playCrowdCheer();
+        });
+
+        // כפתור מופע נחשית ואדם
+        const pauseBtn = document.getElementById('btn-pause');
+        const bTitle = document.getElementById('band-title');
+        const tSub = document.getElementById('tour-subtitle');
+        const sTitle = document.getElementById('s-title');
+        const sCred = document.getElementById('s-credits');
+
+        pauseBtn.addEventListener('click', () => {
+            isBreak = true;
+            countdownOverlay.style.display = 'flex';
+            countdownVal.style.display = 'none';
+            dramaTxt.style.display = 'block';
+            dramaTxt.innerText = "מוכנים לפגוש אותם...?";
+            robotAnnounce("מוכנים לפגוש אותם?");
+
+            setTimeout(() => {
+                dramaTxt.innerText = "עכשיו... קבלו אותם!";
+                robotAnnounce("עכשיו, קבלו אותם!");
+
+                setTimeout(() => {
+                    dramaTxt.style.display = 'none';
+                    countdownVal.style.display = 'block';
+                    let count = 10;
+                    countdownVal.innerText = count;
+                    playDramaticTick(count);
+
+                    const breakInterval = setInterval(() => {
+                        count--;
+                        if (count > 0) {
+                            countdownVal.innerText = count;
+                            countdownVal.style.animation = 'none';
+                            countdownVal.offsetHeight;
+                            countdownVal.style.animation = 'pop 0.9s ease-out';
+                            playDramaticTick(count);
+                        } else {
+                            clearInterval(breakInterval);
+                            countdownOverlay.style.display = 'none';
+
+                            bTitle.innerText = "נחשית & אדם";
+                            bTitle.style.background = "linear-gradient(180deg, #ffffff 10%, #00ff66 60%, #007722 100%)";
+                            bTitle.style.webkitBackgroundClip = "text";
+                            tSub.innerText = "מופע הפסקה מיוחד • SPECIAL BREAK SHOW 🐍⚡";
+                            sTitle.innerText = "סולו הנחשים המחשמל 🐍";
+                            sCred.innerText = "ביצוע: נחשית ואדם • סאונד: אדם";
+
+                            triggerBlinder();
+                            triggerFire();
+                            addFireworks();
+                            addConfetti();
+                            playSub();
+                            playCrowdCheer();
+                            robotAnnounce("קבלו באצטדיון את נחשית ואדם!");
+                        }
+                    }, 1000);
+                }, 1800);
+            }, 2200);
+        });
+
+        // כפתור חזרת אדם ואיילה
+        document.getElementById('btn-return-duo').addEventListener('click', () => {
+            isBreak = false;
+            countdownOverlay.style.display = 'flex';
+            countdownVal.style.display = 'none';
+            dramaTxt.style.display = 'block';
+            dramaTxt.innerText = "נחשית ואדם יורדים מהבמה...";
+            robotAnnounce("נחשית ואדם יורדים מהבמה.");
+
+            setTimeout(() => {
+                dramaTxt.innerText = "ועכשיו... קבלו אותם בחזרה:\nאיילה ואדםםםםםםםםםם!";
+                robotAnnounce("ועכשיו, קבלו אותם בחזרה: איילה ואדם!");
+
+                setTimeout(() => {
+                    countdownOverlay.style.display = 'none';
+                    dramaTxt.style.display = 'none';
+                    countdownVal.style.display = 'block';
+
+                    bTitle.innerText = "אדם & איילה";
+                    bTitle.style.background = "linear-gradient(180deg, #ffffff 10%, #00f0ff 60%, #ff0077 100%)";
+                    bTitle.style.webkitBackgroundClip = "text";
+                    tSub.innerText = "הסיבוב העולמי הגדול • ARENA STAGE";
+                    sTitle.innerText = "מתחילים את הבלאגן";
+                    sCred.innerText = "ביצוע: אדם & איילה • ניהול במה: אדם";
+
+                    triggerBlinder();
+                    triggerFire();
+                    addFireworks();
+                    addConfetti();
+                    playSub();
+                    playCrowdCheer();
+                }, 3000);
+            }, 2200);
+        });
+
+        document.getElementById('btn-beat').addEventListener('click', toggleEDM);
+        document.getElementById('btn-cheer').addEventListener('click', playCrowdCheer);
+        document.getElementById('btn-horn').addEventListener('click', playHorn);
+        document.getElementById('btn-conf').addEventListener('click', addConfetti);
+        document.getElementById('btn-fireworks').addEventListener('click', addFireworks);
+        document.getElementById('btn-fire').addEventListener('click', triggerFire);
+        document.getElementById('btn-blinder').addEventListener('click', triggerBlinder);
+        document.getElementById('btn-lasers').addEventListener('click', () => {
+            isLaser = !isLaser;
+            document.getElementById('btn-lasers').classList.toggle('active', isLaser);
+        });
+
+        document.getElementById('btn-fs').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => alert("לחץ F11"));
+            else document.exitFullscreen();
+        });
+
+        // מודאל
+        let currentModalMode = 'song';
+        const modal = document.getElementById('modal');
+        const mHead = document.getElementById('m-heading');
+        const mInput = document.getElementById('m-input');
+
+        document.getElementById('btn-track').addEventListener('click', () => {
+            currentModalMode = 'song';
+            mHead.innerText = "🎵 מה שם השיר הבא?";
+            mInput.placeholder = "שם השיר...";
+            mInput.value = "";
+            modal.style.display = "flex";
+            mInput.focus();
+        });
+
+        document.getElementById('btn-stage-guest').addEventListener('click', () => {
+            currentModalMode = 'guest';
+            mHead.innerText = "🎤 מי עולה לבמה עכשיו?";
+            mInput.placeholder = "הקלד שם...";
+            mInput.value = "";
+            modal.style.display = "flex";
+            mInput.focus();
+        });
+
+        document.getElementById('btn-ban-criminal').addEventListener('click', () => {
+            currentModalMode = 'ban';
+            mHead.innerText = "🚨 שם הפושע / המשוגע שמתקרב לבמה:";
+            mInput.placeholder = "הקלד שם...";
+            mInput.value = "";
+            modal.style.display = "flex";
+            mInput.focus();
+        });
+
+        function applyModal() {
+            const v = mInput.value.trim();
+            if (v) {
+                if (currentModalMode === 'song') {
+                    sTitle.innerText = v;
+                    addFireworks();
+                    triggerFire();
+                    robotAnnounce("השיר הבא: " + v);
+                } else if (currentModalMode === 'guest') {
+                    guestTarget.innerText = v;
+                    guestBox.style.display = "block";
+                    triggerBlinder();
+                    triggerFire();
+                    addFireworks();
+                    robotAnnounce("קבלו על הבמה את: " + v);
+                } else if (currentModalMode === 'ban') {
+                    banLockTitle.innerText = `🚨 נעילת מופע! BAN לפושע: ${v}! 🚨`;
+                    banLockDesc.innerText = `הפושע ${v} מנסה לפרוץ לבמה. האבטחה פועלת להרחקתו מהאצטדיון. המופע מושבת עד לפינוי!`;
+                    banLockScreen.style.display = 'flex';
+                    robotAnnounce(`התראת אבטחה חמורה! פושע בשם ${v} זוהה ליד הבמה. המופע מושבת עד לפינויו על ידי האבטחה!`);
+                    playHorn();
+                }
+            }
+            modal.style.display = "none";
+        }
+
+        document.getElementById('m-ok').addEventListener('click', applyModal);
+        mInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') applyModal();
+            if (e.key === 'Escape') modal.style.display = "none";
+        });
+        document.getElementById('m-cancel').addEventListener('click', () => modal.style.display = "none");
+
+        window.addEventListener('keydown', (e) => {
+            if (modal.style.display === 'flex') return;
+            if (e.key === 'h' || e.key === 'H' || e.key === 'י') document.body.classList.toggle('clean-hud');
+            if (e.key === 'b' || e.key === 'B' || e.key === 'נ') triggerBlinder();
+            if (e.code === 'Space') { e.preventDefault(); addConfetti(); }
+        });
+    </script>
+</body>
+
+</html>
